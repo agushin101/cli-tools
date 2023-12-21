@@ -34,9 +34,17 @@ void del_file(char *file, const char* home) {
 
 void mv_file(char *file, const char* home) {
     char path[PATHSIZE];
+    char tokdup[PATHSIZE];
+    strcpy(tokdup, file);
+    char *prev = file;
+    char *token = strtok(tokdup, "/");
+    while ((token = strtok(NULL, "/")) != NULL) {
+        prev = token;
+    }
+    
     strcpy(path, home);
     strcat(path, "/.srm_arch/");
-    strcat(path, file);
+    strcat(path, prev);
 
     struct stat statbuf;
     if (lstat(file, &statbuf) == -1) {
@@ -59,15 +67,10 @@ void mv_file(char *file, const char* home) {
         int origFile = open(file, 0);
         char *buf = (char*) malloc((statbuf.st_size ) * sizeof(char));
         char magic[10] = "!srm_arch";
-        char oldpath[PATHSIZE];
-        realpath(file, oldpath);
-        int psize = strlen(oldpath);
         read(origFile, buf, statbuf.st_size);
         close(origFile);
         unlink(file);
         write(fd, magic, 9);
-        write(fd, &psize, sizeof(int));
-        write(fd, oldpath, strlen(oldpath));
         write(fd, buf, statbuf.st_size);
         free(buf);
         close(fd);
@@ -80,9 +83,14 @@ void mv_file(char *file, const char* home) {
 
 void rec_file(char *file, const char* home) {
     char path[PATHSIZE];
+    char newpath[PATHSIZE];
     strcpy(path, home);
     strcat(path, "/.srm_arch/");
     strcat(path, file);
+
+    getcwd(newpath, PATHSIZE);
+    strcat(newpath, "/");
+    strcat(newpath, file);
 
     struct stat statbuf;
     if (lstat(path, &statbuf) == -1) {
@@ -97,17 +105,12 @@ void rec_file(char *file, const char* home) {
             exit(1);
         }
         char *buf = (char*) malloc((statbuf.st_size) * sizeof(char));
-        char oldpath[PATHSIZE];
-        int psize;
-        read(origFile, &psize, sizeof(int));
-        read(origFile, oldpath, psize);
-        oldpath[psize] = '\0';
-        read(origFile, buf, statbuf.st_size - 9 - sizeof(int) - psize);
+        read(origFile, buf, statbuf.st_size - 9);
         close(origFile);
         int fd;
-        if ((fd = open(oldpath, O_CREAT | O_WRONLY | O_EXCL, statbuf.st_mode)) == -1) {
+        if ((fd = open(newpath, O_CREAT | O_WRONLY | O_EXCL, statbuf.st_mode)) == -1) {
             if (errno == EEXIST) {
-                fprintf(stderr, "[srm] - File %s already exists. Either move or delete it.\n", file);
+                fprintf(stderr, "[srm] - File %s already exists in CWD. Either move or delete it.\n", file);
                 exit(1);
             }
             else {
