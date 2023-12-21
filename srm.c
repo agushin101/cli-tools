@@ -126,12 +126,22 @@ void rec_file(char *file, const char* home) {
     }
 }
 
+void help() {
+    printf("srm [dlcr] file1 file2...\n");
+    printf("If used with no arguments, safely remove target files from the current directory tree.\n");
+    printf("These files are stored in a safety archive until a secondary command is given to permanently delete them.\n");
+    printf("-d - Delete the target files from the safety archive.\n");
+    printf("-l - List the contents of the safety archive.\n");
+    printf("-c - Clears the safety archive, deleting all files.\n");
+    printf("-r - Recovers target files from the safety archive.\n");
+}
+
 int main (int argc, char *argv[]) {
     char del = 0, list = 0, clear = 0, all = 0, recover = 0;
     int opt = 0;
     opterr = 0;
 
-    while ((opt = getopt(argc, argv, "dlcr")) != -1) {
+    while ((opt = getopt(argc, argv, "dlcrh")) != -1) {
         switch (opt)
         {
         case 'd':
@@ -146,10 +156,18 @@ int main (int argc, char *argv[]) {
         case 'r':
             recover = 1;
             break;
+        case 'h':
+            help();
+            return 0;
         default:
             fprintf(stderr, "[srm] - Improper command line. Use: srm [dlcr] args\n");
             return 1;
         }
+    }
+
+    if (argc == 1) {
+        help();
+        return 0;
     }
 
     if (del + list + clear + recover > 1) {
