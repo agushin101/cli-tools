@@ -8,8 +8,13 @@
 #include <dirent.h>
 #include <sys/types.h>
 
-void del_file(char *file) {
-    char path[1024] = "srm_arch/";
+#define PATHSIZE 2048
+
+
+void del_file(char *file, const char* home) {
+    char path[PATHSIZE];
+    strcpy(path, home);
+    strcat(path, "/.srm_arch/");
     strcat(path, file);
     if (unlink(path) == -1) {
         fprintf(stderr, "[srm] - Error deleting file %s. Not in archive.\n", file);
@@ -17,8 +22,10 @@ void del_file(char *file) {
     }
 }
 
-void mv_file(char *file) {
-    char path[1024] = "srm_arch/";
+void mv_file(char *file, const char* home) {
+    char path[PATHSIZE];
+    strcpy(path, home);
+    strcat(path, "/.srm_arch/");
     strcat(path, file);
 
     struct stat statbuf;
@@ -29,7 +36,7 @@ void mv_file(char *file) {
 
     if (S_ISREG(statbuf.st_mode)) {
         int fd;
-        if ((fd = open(file, O_CREAT | O_WRONLY | O_EXCL, statbuf.st_mode)) == -1) {
+        if ((fd = open(path, O_CREAT | O_WRONLY | O_EXCL, statbuf.st_mode)) == -1) {
             if (errno == EEXIST) {
                 fprintf(stderr, "[srm] - File %s already archived. Either recover or delete it.\n", file);
                 exit(1);
@@ -54,8 +61,10 @@ void mv_file(char *file) {
     }
 }
 
-void rec_file(char *file) {
-    char path[1024] = "srm_arch/";
+void rec_file(char *file, const char* home) {
+    char path[PATHSIZE];
+    strcpy(path, home);
+    strcat(path, "/.srm_arch/");
     strcat(path, file);
 
     struct stat statbuf;
@@ -125,17 +134,23 @@ int main (int argc, char *argv[]) {
         return 1;
     }
 
-    mkdir("srm_arch", 0755);
+    char *homed= getenv("HOME");
+    char path[50];
+    strcpy(path, homed);
+    strcat(path, "/.srm_arch/");
+    
+
+    mkdir(path, 0755);
 
     if (!(fullDel | del | list | clear | recover)) {
         for (int i = 1; i < argc; i++) {
-            mv_file(argv[i]);
+            mv_file(argv[i], homed);
         }
     }
 
     else if (del) {
         for (int i = optind; i < argc; i++) {
-            del_file(argv[i]);
+            del_file(argv[i], homed);
         }
     }
 
@@ -144,22 +159,22 @@ int main (int argc, char *argv[]) {
         struct dirent *entry;
         while ((entry = readdir(arch)) != NULL) {
             if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
-                del_file(entry->d_name);
+                del_file(entry->d_name, homed);
             }
         }
     }
 
     else if (list) {
-        execlp("ls", "ls", "srm_arch", NULL);
+        execlp("ls", "ls", path, NULL);
     }
 
     else if (clear) {
-        execlp("rm", "rm", "-r", "srm_arch", NULL);
+        execlp("rm", "rm", "-r", path, NULL);
     }
     
     else {
         for (int i = optind; i < argc; i++) {
-            rec_file(argv[i]);
+            rec_file(argv[i], homed);
         }
     }
     return 0;
